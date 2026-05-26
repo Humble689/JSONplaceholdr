@@ -1,0 +1,74 @@
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Sora:wght@400;500;600;700;800&display=swap');
+
+:root {
+  color-scheme: light;
+  --bg: #f4efe7;
+  --surface: rgba(255, 255, 255, 0.72);
+  --surface-strong: #ffffff;
+  --border: rgba(34, 35, 41, 0.08);
+  --border-soft: rgba(34, 35, 41, 0.12);
+  --text-strong: #15181f;
+  --text: #2d323d;
+  --text-muted: #66707d;
+  --muted: #748091;
+  --accent: #1c9189;
+  --accent-strong: #0c6f69;
+  --shadow-soft:
+    0 30px 60px rgba(31, 43, 55, 0.07), 0 12px 24px rgba(31, 43, 55, 0.05);
+  font-family: 'Sora', system-ui, sans-serif;
+  line-height: 1.5;
+  font-weight: 400;
+  color: var(--text);
+  background:
+    radial-gradient(circle at top left, rgba(255, 187, 119, 0.25), transparent 26%),
+    radial-gradient(circle at bottom right, rgba(28, 145, 137, 0.14), transparent 30%),
+    linear-gradient(180deg, #f8f4ed 0%, #f4efe7 100%);
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  min-height: 100%;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  min-height: 100vh;
+}
+
+body,
+button,
+input,
+textarea {
+  font-family: inherit;
+}
+
+button,
+input,
+textarea {
+  font: inherit;
+}
+
+button {
+  -webkit-tap-highlight-color: transparent;
+}
+
+img,
+svg {
+  display: block;
+}
+
+::selection {
+  background: rgba(28, 145, 137, 0.18);
+}
+
+#root {
+  min-height: 100vh;
+}
