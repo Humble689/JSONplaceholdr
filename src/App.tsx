@@ -106,7 +106,7 @@ function App() {
   )
   const [authMode, setAuthMode] = useState<AuthMode>('sign-in')
   const [authName, setAuthName] = useState('')
-  const [authEmail, setAuthEmail] = useState('demo@copilot.dev')
+  const [authEmail, setAuthEmail] = useState('demo@gmail.com')
   const [authPassword, setAuthPassword] = useState('password123')
   const [authConfirmPassword, setAuthConfirmPassword] = useState('password123')
   const [authMessage, setAuthMessage] = useState<string | null>(null)
@@ -148,6 +148,31 @@ function App() {
   useEffect(() => {
     safeSave(AUTH_USERS_KEY, authUsers)
   }, [authUsers])
+
+  // Migrate any previously stored demo account email to the new demo@gmail.com address
+  useEffect(() => {
+    const OLD = 'demo@copilot.dev'
+    const NEW = 'demo@gmail.com'
+
+    const hasOld = authUsers.some((u) => u.email === OLD)
+
+    if (hasOld) {
+      setAuthUsers((current) =>
+        current.map((u) => (u.email === OLD ? { ...u, email: NEW } : u)),
+      )
+      // Also update any persisted session if it references the old email
+      try {
+        const sess = safeLoad<AuthUser | null>(AUTH_SESSION_KEY, null)
+
+        if (sess && sess.email === OLD) {
+          safeSave(AUTH_SESSION_KEY, { ...sess, email: NEW })
+          setAuthUser((prev) => (prev && prev.email === OLD ? { ...prev, email: NEW } : prev))
+        }
+      } catch {
+        // ignore
+      }
+    }
+  }, [])
  
   useEffect(() => {
     safeSave(AUTH_SESSION_KEY, authUser)
