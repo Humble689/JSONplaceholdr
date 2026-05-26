@@ -38,3 +38,8 @@ npm run dev
 
 - `npm run lint`
 - `npm run build`
+
+## Task 2
+
+- Added Task 2 solution in `task-2/solution.js`.
+- Implements `lengthOfLongestSubstring(s)` using a sliding window and hash map.
