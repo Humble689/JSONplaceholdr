@@ -1,3 +1,87 @@
+.auth-shell {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+}
+
+.auth-panel {
+  width: min(920px, 100%);
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(320px, 0.92fr);
+  gap: 22px;
+  padding: 28px;
+  border-radius: 32px;
+  border: 1px solid var(--border-soft);
+  background: var(--surface);
+  box-shadow: var(--shadow-soft);
+  backdrop-filter: blur(16px);
+}
+
+.auth-copy {
+  display: grid;
+  align-content: start;
+  gap: 18px;
+}
+
+.auth-copy h1 {
+  margin: 0;
+  font-size: clamp(2.4rem, 4.8vw, 4.4rem);
+  line-height: 0.96;
+  letter-spacing: -0.05em;
+}
+
+.auth-note {
+  display: grid;
+  gap: 4px;
+  padding: 16px 18px;
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.62);
+  border: 1px solid var(--border-soft);
+}
+
+.auth-note strong {
+  color: var(--text-strong);
+}
+
+.auth-note span {
+  color: var(--text-muted);
+}
+
+.auth-form {
+  display: grid;
+  gap: 14px;
+  padding: 20px;
+  border-radius: 24px;
+  background: rgba(255, 255, 255, 0.62);
+  border: 1px solid var(--border-soft);
+}
+
+.auth-switch {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.auth-tab {
+  border: 1px solid var(--border-soft);
+  background: rgba(255, 255, 255, 0.75);
+  color: var(--text);
+  border-radius: 999px;
+  padding: 0.85rem 1rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.auth-tab.is-active {
+  background: linear-gradient(135deg, var(--accent), var(--accent-strong));
+  color: white;
+  border-color: transparent;
+}
+
+.auth-submit {
+  width: 100%;
+}
+
 .app-shell {
   width: min(1440px, 100%);
   margin: 0 auto;
@@ -446,6 +530,7 @@ textarea {
     padding: 16px;
   }
 
+  .auth-panel,
   .hero-panel,
   .workspace {
     grid-template-columns: 1fr;
@@ -461,6 +546,10 @@ textarea {
   .editor-actions,
   .pager {
     width: 100%;
+  }
+
+  .auth-switch {
+    grid-template-columns: 1fr;
   }
 
   .toolbar-actions > *,

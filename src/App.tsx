@@ -3,9 +3,22 @@ import type { FormEvent } from 'react'
 import { createPost, deletePost, fetchComments, fetchPosts, updatePost } from './api'
 import './App.css'
 import type { Comment, Post, PostDraft } from './types'
+ 
+type AuthUser = {
+  name: string
+  email: string
+}
+ 
+type StoredAuthUser = AuthUser & {
+  password: string
+}
+ 
+type AuthMode = 'sign-in' | 'sign-up'
 
 const POSTS_CACHE_KEY = 'jsonplaceholder.posts.cache.v1'
 const COMMENTS_CACHE_KEY = 'jsonplaceholder.comments.cache.v1'
+const AUTH_USERS_KEY = 'jsonplaceholder.auth.users.v1'
+const AUTH_SESSION_KEY = 'jsonplaceholder.auth.session.v1'
 const PAGE_SIZE = 8
 
 const EMPTY_DRAFT: PostDraft = {
@@ -73,8 +86,30 @@ function sortPosts(posts: Post[]) {
 function excerpt(body: string) {
   return body.length > 120 ? `${body.slice(0, 117)}...` : body
 }
+ 
+function seedAuthUsers(): StoredAuthUser[] {
+  return [
+    {
+      name: 'Demo Interview User',
+      email: 'demo@copilot.dev',
+      password: 'password123',
+    },
+  ]
+}
 
 function App() {
+  const [authUsers, setAuthUsers] = useState<StoredAuthUser[]>(() =>
+    safeLoad<StoredAuthUser[]>(AUTH_USERS_KEY, seedAuthUsers()),
+  )
+  const [authUser, setAuthUser] = useState<AuthUser | null>(() =>
+    safeLoad<AuthUser | null>(AUTH_SESSION_KEY, null),
+  )
+  const [authMode, setAuthMode] = useState<AuthMode>('sign-in')
+  const [authName, setAuthName] = useState('')
+  const [authEmail, setAuthEmail] = useState('demo@copilot.dev')
+  const [authPassword, setAuthPassword] = useState('password123')
+  const [authConfirmPassword, setAuthConfirmPassword] = useState('password123')
+  const [authMessage, setAuthMessage] = useState<string | null>(null)
   const [posts, setPosts] = useState<Post[]>(() => sortPosts(safeLoad<Post[]>(POSTS_CACHE_KEY, [])))
   const [commentsCache, setCommentsCache] = useState<Record<number, Comment[]>>(() =>
     safeLoadSession<Record<number, Comment[]>>(COMMENTS_CACHE_KEY, {}),
@@ -90,6 +125,14 @@ function App() {
   const [error, setError] = useState<string | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
   const deferredSearch = useDeferredValue(search)
+ 
+  useEffect(() => {
+    safeSave(AUTH_USERS_KEY, authUsers)
+  }, [authUsers])
+ 
+  useEffect(() => {
+    safeSave(AUTH_SESSION_KEY, authUser)
+  }, [authUser])
 
   useEffect(() => {
     safeSave(POSTS_CACHE_KEY, posts)
@@ -101,6 +144,10 @@ function App() {
 
   useEffect(() => {
     let cancelled = false
+ 
+    if (!authUser) {
+      return
+    }
 
     async function bootstrap() {
       if (posts.length > 0) {
@@ -138,7 +185,166 @@ function App() {
     return () => {
       cancelled = true
     }
-  }, [posts.length])
+  }, [authUser, posts.length])
+
+  function resetAuthForm(mode: AuthMode = 'sign-in') {
+    setAuthMode(mode)
+    setAuthName('')
+    setAuthEmail(mode === 'sign-in' ? 'demo@copilot.dev' : '')
+    setAuthPassword(mode === 'sign-in' ? 'password123' : '')
+    setAuthConfirmPassword(mode === 'sign-in' ? 'password123' : '')
+    setAuthMessage(null)
+  }
+
+  function handleLogout() {
+    setAuthUser(null)
+    setNotice(null)
+    setError(null)
+    setSearch('')
+    setPage(1)
+    setSelectedPostId(null)
+    setDraft(EMPTY_DRAFT)
+    setCommentStatus('idle')
+    resetAuthForm('sign-in')
+  }
+
+  function handleAuthSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+
+    const email = authEmail.trim().toLowerCase()
+    const password = authPassword.trim()
+    const name = authName.trim()
+
+    if (!email || !password) {
+      setAuthMessage('Email and password are required.')
+      return
+    }
+
+    if (authMode === 'sign-up' && !name) {
+      setAuthMessage('Name is required when creating a new account.')
+      return
+    }
+
+    if (authMode === 'sign-up' && password !== authConfirmPassword.trim()) {
+      setAuthMessage('Passwords do not match.')
+      return
+    }
+
+    const existingUser = authUsers.find((user) => user.email === email)
+
+    if (authMode === 'sign-up') {
+      if (existingUser) {
+        setAuthMessage('An account with that email already exists.')
+        return
+      }
+
+      const nextUser: StoredAuthUser = { name, email, password }
+
+      setAuthUsers((current) => [...current, nextUser])
+      setAuthUser({ name, email })
+      setAuthMessage('Account created. You are now signed in.')
+      return
+    }
+
+    if (!existingUser || existingUser.password !== password) {
+      setAuthMessage('Invalid email or password.')
+      return
+    }
+
+    setAuthUser({ name: existingUser.name, email: existingUser.email })
+    setAuthMessage('Signed in successfully.')
+  }
+
+  if (!authUser) {
+    return (
+      <main className="app-shell auth-shell">
+        <section className="auth-panel">
+          <div className="auth-copy">
+            <p className="eyebrow">In-app authentication</p>
+            <h1>Sign in to unlock the JSONPlaceholder CRUD studio.</h1>
+            <p className="lede">
+              This interview build uses local in-app authentication with a persisted demo account and
+              sign-up flow. Once signed in, the full CRUD dashboard, pagination, caching, and comment
+              viewer become available.
+            </p>
+
+            <div className="auth-note">
+              <strong>Demo credentials</strong>
+              <span>demo@copilot.dev / password123</span>
+            </div>
+          </div>
+
+          <form className="auth-form" onSubmit={handleAuthSubmit}>
+            <div className="auth-switch">
+              <button
+                type="button"
+                className={authMode === 'sign-in' ? 'auth-tab is-active' : 'auth-tab'}
+                onClick={() => resetAuthForm('sign-in')}
+              >
+                Sign in
+              </button>
+              <button
+                type="button"
+                className={authMode === 'sign-up' ? 'auth-tab is-active' : 'auth-tab'}
+                onClick={() => resetAuthForm('sign-up')}
+              >
+                Sign up
+              </button>
+            </div>
+
+            {authMode === 'sign-up' ? (
+              <label>
+                <span>Name</span>
+                <input
+                  value={authName}
+                  onChange={(event) => setAuthName(event.target.value)}
+                  placeholder="Your name"
+                />
+              </label>
+            ) : null}
+
+            <label>
+              <span>Email</span>
+              <input
+                type="email"
+                value={authEmail}
+                onChange={(event) => setAuthEmail(event.target.value)}
+                placeholder="you@example.com"
+              />
+            </label>
+
+            <label>
+              <span>Password</span>
+              <input
+                type="password"
+                value={authPassword}
+                onChange={(event) => setAuthPassword(event.target.value)}
+                placeholder="Enter your password"
+              />
+            </label>
+
+            {authMode === 'sign-up' ? (
+              <label>
+                <span>Confirm password</span>
+                <input
+                  type="password"
+                  value={authConfirmPassword}
+                  onChange={(event) => setAuthConfirmPassword(event.target.value)}
+                  placeholder="Confirm your password"
+                />
+              </label>
+            ) : null}
+
+            {authMessage ? <p className="status status--error">{authMessage}</p> : null}
+
+            <button type="submit" className="primary-button auth-submit">
+              {authMode === 'sign-in' ? 'Sign in' : 'Create account'}
+            </button>
+          </form>
+        </section>
+      </main>
+    )
+  }
 
   const normalizedSearch = deferredSearch.trim().toLowerCase()
   const filteredPosts = normalizedSearch
@@ -338,8 +544,9 @@ function App() {
           <p className="eyebrow">JSONPlaceholder CRUD studio</p>
           <h1>Fast post management with optimistic edits, caching, and responsive layout.</h1>
           <p className="lede">
-            This SPA consumes the JSONPlaceholder API, caches data locally for faster reloads, and
-            keeps the UI reactive while you create, update, delete, filter, and inspect posts.
+            Signed in as {authUser.name} ({authUser.email}). This SPA consumes the JSONPlaceholder
+            API, caches data locally for faster reloads, and keeps the UI reactive while you create,
+            update, delete, filter, and inspect posts.
           </p>
 
           <div className="hero-actions">
@@ -348,6 +555,9 @@ function App() {
             </button>
             <button type="button" className="secondary-button" onClick={handleResetCache}>
               Reset cache
+            </button>
+            <button type="button" className="ghost-button" onClick={handleLogout}>
+              Log out
             </button>
           </div>
         </div>
