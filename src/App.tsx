@@ -90,8 +90,8 @@ function excerpt(body: string) {
 function seedAuthUsers(): StoredAuthUser[] {
   return [
     {
-      name: 'Demo Interview User',
-      email: 'demo@copilot.dev',
+      name: 'Demo User',
+      email: 'demo@gmail.com',
       password: 'password123',
     },
   ]
@@ -118,12 +118,31 @@ function App() {
   const [draft, setDraft] = useState<PostDraft>(EMPTY_DRAFT)
   const [search, setSearch] = useState('')
   const [page, setPage] = useState(1)
+  const [view, setView] = useState<'dashboard' | 'posts' | 'todos' | 'users' | 'albums'>('posts')
+  const [userMenuOpen, setUserMenuOpen] = useState(false)
+  const [sidebarOpen, setSidebarOpen] = useState(false)
   const [initialLoading, setInitialLoading] = useState(posts.length === 0)
   const [isSaving, setIsSaving] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
   const [commentStatus, setCommentStatus] = useState<'idle' | 'loading' | 'ready' | 'error'>('idle')
   const [error, setError] = useState<string | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
+  type Toast = { id: number; type: 'success' | 'error' | 'info'; title: string; sub?: string }
+  const [toasts, setToasts] = useState<Toast[]>([])
+  const nextToastId = (() => {
+    let id = Date.now()
+    return () => ++id
+  })()
+
+  function showToast(type: Toast['type'], title: string, sub?: string) {
+    const id = nextToastId()
+    const t: Toast = { id, type, title, sub }
+    setToasts((s) => [...s, t])
+    window.setTimeout(() => {
+      setToasts((s) => s.filter((x) => x.id !== id))
+    }, 3500)
+    return id
+  }
   const deferredSearch = useDeferredValue(search)
  
   useEffect(() => {
@@ -135,12 +154,24 @@ function App() {
   }, [authUser])
 
   useEffect(() => {
+    if (notice) {
+      showToast('success', notice)
+      setNotice(null)
+    }
+
     safeSave(POSTS_CACHE_KEY, posts)
   }, [posts])
 
   useEffect(() => {
     safeSaveSession(COMMENTS_CACHE_KEY, commentsCache)
   }, [commentsCache])
+
+  useEffect(() => {
+    if (error) {
+      showToast('error', error)
+      setError(null)
+    }
+  }, [error])
 
   useEffect(() => {
     let cancelled = false
@@ -190,7 +221,7 @@ function App() {
   function resetAuthForm(mode: AuthMode = 'sign-in') {
     setAuthMode(mode)
     setAuthName('')
-    setAuthEmail(mode === 'sign-in' ? 'demo@copilot.dev' : '')
+    setAuthEmail(mode === 'sign-in' ? 'demo@gmail.com' : '')
     setAuthPassword(mode === 'sign-in' ? 'password123' : '')
     setAuthConfirmPassword(mode === 'sign-in' ? 'password123' : '')
     setAuthMessage(null)
@@ -206,6 +237,11 @@ function App() {
     setDraft(EMPTY_DRAFT)
     setCommentStatus('idle')
     resetAuthForm('sign-in')
+    try {
+      window.localStorage.removeItem(AUTH_SESSION_KEY)
+    } catch {
+      // ignore
+    }
   }
 
   function handleAuthSubmit(event: FormEvent<HTMLFormElement>) {
@@ -263,14 +299,14 @@ function App() {
             <p className="eyebrow">In-app authentication</p>
             <h1>Sign in to unlock the JSONPlaceholder CRUD studio.</h1>
             <p className="lede">
-              This interview build uses local in-app authentication with a persisted demo account and
-              sign-up flow. Once signed in, the full CRUD dashboard, pagination, caching, and comment
+              This demo uses local in-app authentication with a persisted demo account and sign-up
+              flow. Once signed in, the full CRUD dashboard, pagination, caching, and comment
               viewer become available.
             </p>
 
             <div className="auth-note">
               <strong>Demo credentials</strong>
-              <span>demo@copilot.dev / password123</span>
+              <span>demo@gmail.com / password123</span>
             </div>
           </div>
 
@@ -538,8 +574,170 @@ function App() {
   }
 
   return (
-    <main className="app-shell">
-      <section className="hero-panel">
+    <main className={`app-shell ${sidebarOpen ? 'sidebar-open' : ''}`}>
+      <div className="toasts" aria-live="polite">
+        {toasts.map((t) => (
+          <div key={t.id} className={`toast ${t.type}`}>
+            <div className="toast-icon">{t.type === 'success' ? '✓' : t.type === 'error' ? '✕' : 'i'}</div>
+            <div className="toast-text">
+              <div className="toast-title">{t.title}</div>
+              {t.sub ? <div className="toast-sub">{t.sub}</div> : null}
+            </div>
+            <button className="toast-close" onClick={() => setToasts((s) => s.filter((x) => x.id !== t.id))}>
+              ×
+            </button>
+          </div>
+        ))}
+      </div>
+      <header className="topbar">
+        <div className="topbar-left">
+          <button
+            type="button"
+            className={`hamburger ${sidebarOpen ? 'is-open' : ''}`}
+            onClick={() => setSidebarOpen((v) => !v)}
+            aria-expanded={sidebarOpen}
+            aria-label="Toggle navigation"
+          >
+            ☰
+          </button>
+          <div className="topbar-title">Placeholdr</div>
+        </div>
+
+        <label className="search-box">
+          <input
+            value={search}
+            onChange={(event) => {
+              setSearch(event.target.value)
+              setPage(1)
+            }}
+            placeholder="Search posts, title, or user id"
+          />
+        </label>
+
+        <div className="topbar-right">
+          <div
+            className="user-menu-wrapper"
+            tabIndex={0}
+            onBlur={(e) => {
+              const related = (e as React.FocusEvent<HTMLDivElement>).relatedTarget as Node | null
+              if (!related || !(e.currentTarget as HTMLElement).contains(related)) {
+                setUserMenuOpen(false)
+              }
+            }}
+          >
+            <button
+              type="button"
+              className={`user-chip ${userMenuOpen ? 'is-open' : ''}`}
+              onClick={() => setUserMenuOpen((v) => !v)}
+              aria-haspopup="menu"
+              aria-expanded={userMenuOpen}
+            >
+              <span>{authUser.name}</span>
+            </button>
+
+            {userMenuOpen ? (
+              <div className="user-menu" role="menu">
+                <button
+                  className="menu-item"
+                  onClick={() => {
+                    setUserMenuOpen(false)
+                    showToast('info', 'Profile', 'Profile view is not implemented in this demo')
+                  }}
+                >
+                  Profile
+                </button>
+                <button
+                  className="menu-item"
+                  onClick={() => {
+                    setUserMenuOpen(false)
+                    showToast('info', 'Settings', 'Settings are not available in the demo')
+                  }}
+                >
+                  Settings
+                </button>
+                <button
+                  className="menu-item"
+                  onPointerDown={() => {
+                    setUserMenuOpen(false)
+                    handleLogout()
+                  }}
+                >
+                  Log out
+                </button>
+              </div>
+            ) : null}
+          </div>
+        </div>
+      </header>
+      <aside
+        className={`app-sidebar ${sidebarOpen ? 'is-open' : ''}`}
+        aria-label="Primary navigation"
+        aria-hidden={!sidebarOpen}
+      >
+        <div className="sidebar-inner">
+          <div className="logo">
+            <div className="logo-title">Placeholdr</div>
+            <div className="logo-sub">Demo SPA</div>
+          </div>
+
+          <nav className="nav">
+            <button
+              className={`nav-btn ${view === 'posts' ? 'active' : ''}`}
+              onClick={() => {
+                setView('posts')
+                setSidebarOpen(false)
+              }}
+            >
+              Posts
+            </button>
+            <button
+              className={`nav-btn ${view === 'todos' ? 'active' : ''}`}
+              onClick={() => {
+                setView('todos')
+                setSidebarOpen(false)
+              }}
+            >
+              Todos
+            </button>
+            <button
+              className={`nav-btn ${view === 'users' ? 'active' : ''}`}
+              onClick={() => {
+                setView('users')
+                setSidebarOpen(false)
+              }}
+            >
+              Users
+            </button>
+            <button
+              className={`nav-btn ${view === 'albums' ? 'active' : ''}`}
+              onClick={() => {
+                setView('albums')
+                setSidebarOpen(false)
+              }}
+            >
+              Albums
+            </button>
+          </nav>
+
+          <div className="sidebar-footer">
+            <div className="user-chip small">
+              <div className="user-avatar" style={{ background: '#6c8bff' }} />
+              <div>
+                <div className="user-name">{authUser.name}</div>
+                <div className="user-role">Signed in</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </aside>
+      <div
+        className={`sidebar-backdrop ${sidebarOpen ? 'is-open' : ''}`}
+        onClick={() => setSidebarOpen(false)}
+        aria-hidden={!sidebarOpen}
+      />
+      {view === 'posts' ? (
+        <>
+        <section className="hero-panel">
         <div className="hero-copy">
           <p className="eyebrow">JSONPlaceholder CRUD studio</p>
           <h1>Fast post management with optimistic edits, caching, and responsive layout.</h1>
@@ -573,9 +771,9 @@ function App() {
             <strong>{Object.keys(commentsCache).length}</strong>
           </article>
         </div>
-      </section>
+        </section>
 
-      <section className="toolbar" aria-label="Controls">
+        <section className="toolbar" aria-label="Controls">
         <label className="search-field">
           <span>Search posts</span>
           <input
@@ -598,19 +796,13 @@ function App() {
           <div className="page-pill">
             Page {currentPage} of {totalPages}
           </div>
-              <div className="user-chip" aria-label="Signed-in user">
-                <span>{authUser.name}</span>
-                <button type="button" className="ghost-button" onClick={handleLogout}>
-                  Log out
-                </button>
-              </div>
         </div>
-      </section>
+        </section>
 
-      {notice ? <p className="status status--success">{notice}</p> : null}
-      {error ? <p className="status status--error">{error}</p> : null}
+        {notice ? <p className="status status--success">{notice}</p> : null}
+        {error ? <p className="status status--error">{error}</p> : null}
 
-      <section className="workspace">
+        <section className="workspace">
         <aside className="panel panel--list">
           <div className="panel-heading">
             <div>
@@ -784,7 +976,19 @@ function App() {
             </div>
           )}
         </aside>
-      </section>
+        </section>
+        </>
+      ) : (
+        <main className="content">
+          <div style={{ maxWidth: 980, margin: '24px auto' }}>
+            <h2 style={{ marginTop: 0 }}>{view.charAt(0).toUpperCase() + view.slice(1)}</h2>
+            <p style={{ color: 'var(--text-muted)' }}>This section is a placeholder for the <strong>{view}</strong> view. The demo focuses on Posts — other areas are stubbed.</p>
+            <div style={{ marginTop: 18 }}>
+              <button className="primary-button" onClick={() => { setView('posts'); setPage(1) }}>Back to Posts</button>
+            </div>
+          </div>
+        </main>
+      )}
     </main>
   )
 }
