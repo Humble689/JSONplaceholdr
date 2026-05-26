@@ -556,9 +556,6 @@ function App() {
             <button type="button" className="secondary-button" onClick={handleResetCache}>
               Reset cache
             </button>
-            <button type="button" className="ghost-button" onClick={handleLogout}>
-              Log out
-            </button>
           </div>
         </div>
 
@@ -601,6 +598,12 @@ function App() {
           <div className="page-pill">
             Page {currentPage} of {totalPages}
           </div>
+              <div className="user-chip" aria-label="Signed-in user">
+                <span>{authUser.name}</span>
+                <button type="button" className="ghost-button" onClick={handleLogout}>
+                  Log out
+                </button>
+              </div>
         </div>
       </section>
 
